@@ -1,5 +1,4 @@
 import { expect, Page, test } from '@playwright/test';
-import { RunCompleteBanner } from '../src/components/RunCompleteBanner';
 import { DashboardPage } from '../src/pages/DashboardPage';
 import { LoginPage } from '../src/pages/LoginPage';
 
@@ -22,16 +21,10 @@ test.beforeEach(() => {
 });
 
 test.afterEach(async ({ page }, testInfo) => {
-  // the 5 second hold must not eat into the test's own time budget
-  testInfo.setTimeout(testInfo.timeout + 15_000);
-  const passed = testInfo.status === testInfo.expectedStatus;
-  console.log(`${passed ? 'PASSED' : 'FAILED'} - run complete: ${testInfo.title}`);
-  try {
-    await new RunCompleteBanner(page).show(testInfo.title, passed);
-    await testInfo.attach('run-complete', { body: await page.screenshot(), contentType: 'image/png' });
-  } catch {
-    // page already closed or crashed, the console line above still reports the result
-  }
+  // keep the browser open for 5 seconds at the end so a headed run can be
+  // seen finishing, without eating into the test's own time budget
+  testInfo.setTimeout(testInfo.timeout + 10_000);
+  await page.waitForTimeout(5000);
 });
 
 test('logs in and lists applications', async ({ page }) => {
