@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 
 export class LoginPage {
   constructor(private readonly page: Page) {}
@@ -11,5 +11,9 @@ export class LoginPage {
     await this.page.locator('#Email').fill(email);
     await this.page.locator('#Password').fill(password);
     await this.page.getByRole('button', { name: 'Login' }).click();
+    // without this a wrong password only shows up later as a timeout on
+    // the dashboard, which points at the wrong screen
+    await expect(this.page, 'still on the login page - check CARECUBE_EMAIL / CARECUBE_PASSWORD')
+      .not.toHaveURL(/\/login(\/|\?|#|$)/i, { timeout: 30_000 });
   }
 }
