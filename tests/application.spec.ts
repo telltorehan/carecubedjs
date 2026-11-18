@@ -20,11 +20,14 @@ test.beforeEach(() => {
   expect(password, 'CARECUBE_PASSWORD is not set').not.toBe('');
 });
 
-test.afterEach(async ({ page }, testInfo) => {
-  // keep the browser open for 5 seconds at the end so a headed run can be
-  // seen finishing, without eating into the test's own time budget
+test.afterEach(async ({ page, headless }, testInfo) => {
+  // keep the browser open for 5 seconds so a headed run can be seen
+  // finishing; headless runs have nobody watching, so skip it there
+  if (headless) return;
   testInfo.setTimeout(testInfo.timeout + 10_000);
-  await page.waitForTimeout(5000);
+  // if the page already crashed the real error is reported by the test,
+  // a second one from here would only add noise
+  await page.waitForTimeout(5000).catch(() => {});
 });
 
 test('logs in and lists applications', async ({ page }) => {
@@ -36,7 +39,15 @@ test('opens the first application', async ({ page }) => {
   const dashboard = await logIn(page);
   const dashboardUrl = page.url();
 
-  await dashboard.openApplication(0);
+  const status = await dashboard.openApplication(0);
 
+  // the application screen itself isn't mapped yet, so for now prove the
+  // click landed on a real page: no server error, not bounced to login,
+  // and not still sitting on the dashboard. status 0 means the app swapped
+  // the page in place without a full load, so there's no status to check
+  if (status !== 0) {
+    expect(status, `application page returned HTTP ${status}`).toBeLessThan(400);
+  }
+  await expect(page).not.toHaveURL(/\/login(\/|\?|#|$)/i);
   await expect(page).not.toHaveURL(dashboardUrl);
 });
